@@ -117,6 +117,51 @@ export function isGitCommit(command) {
   return true;
 }
 
+export function hasNoVerify(command) {
+  const args = gitCommitArgs(command);
+  return Boolean(args && (args.includes("--no-verify") || args.includes("-n")));
+}
+
+/**
+ * Read an explicit skip reason from the command, for example:
+ *   COMMIT_REVIEW_SKIP_REASON="emergency rollback" git commit --no-verify -m ...
+ */
+export function parseSkipReason(command) {
+  for (const segment of splitShellSegments(command)) {
+    for (const word of shellWords(segment)) {
+      const match = word.match(/^COMMIT_REVIEW_SKIP_REASON=(.*)$/s);
+      if (match && match[1].trim()) return match[1].trim();
+    }
+  }
+  return "";
+}
+
+const ROOT_DOCS = new Set([
+  "README.md",
+  "README.mdx",
+  "CHANGELOG.md",
+  "CHANGELOG.mdx",
+  "LICENSE",
+  "LICENSE.md",
+  "CONTRIBUTING.md",
+]);
+
+export function isDocumentationPath(file) {
+  const normalized = String(file).replaceAll("\\", "/").replace(/^\/+/, "");
+  if (!normalized) return false;
+  if (normalized.split("/").includes("..")) return false;
+  if (normalized.startsWith("docs/")) return true;
+  if (normalized.includes("/")) return false;
+  if (ROOT_DOCS.has(normalized)) return true;
+  if (/^README\.[^.]+$/.test(normalized)) return true;
+  if (/^CHANGELOG\.[^.]+$/.test(normalized)) return true;
+  return false;
+}
+
+export function isDocsOnly(files) {
+  return Array.isArray(files) && files.length > 0 && files.every(isDocumentationPath);
+}
+
 /**
  * Reject commit forms the review cannot bind to the staged diff.
  */
@@ -201,17 +246,48 @@ export function computeBinding(repoRoot, command) {
     "--no-ext-diff",
     "--no-color",
     "--binary",
+    "--no-renames",
   ]);
+  const files = runGit(repoRoot, [
+    "diff",
+    "--cached",
+    "--name-only",
+    "-z",
+    "--no-renames",
+  ])
+    .split("\0")
+    .filter(Boolean);
   return {
     branch,
     head,
     diff,
+    files,
     diffHash: sha256(diff),
     commandHash: sha256(command),
   };
 }
 
-export function buildPrompt({ requestPath, diffPath, dossierPath, binding }) {
+/**
+ * Split the staged diff into per-file chunks so a large change can still be
+ * reviewed. A single file above maxBytes cannot be split safely by this gate.
+ */
+export function buildPrompt({
+  requestPath,
+  diffPath,
+  dossierPath,
+  binding,
+  oversized = false,
+}) {
+  const inputLines = [
+    `- Request: ${requestPath}`,
+    `- Staged diff: ${diffPath}`,
+    `- Dossier output: ${dossierPath}`,
+    `- Branch: ${binding.branch}`,
+    `- HEAD: ${binding.head}`,
+    `- Diff SHA-256: ${binding.diffHash}`,
+    `- Command SHA-256: ${binding.commandHash}`,
+  ];
+
   return `You are an independent commit reviewer. You have no context from the parent agent.
 
 Your job is to review the exact staged diff that is about to be committed.
@@ -226,15 +302,13 @@ Your job is to review the exact staged diff that is about to be committed.
 
 ## Input
 
-- Request: ${requestPath}
-- Staged diff: ${diffPath}
-- Dossier output: ${dossierPath}
-- Branch: ${binding.branch}
-- HEAD: ${binding.head}
-- Diff SHA-256: ${binding.diffHash}
-- Command SHA-256: ${binding.commandHash}
+${inputLines.join("\n")}
 
-Read the request and diff. Read AGENTS.md and the relevant source files when the diff is not enough to judge behavior. Verify that the diff file still hashes to Diff SHA-256 before deciding.
+Read the request and diff. Read AGENTS.md and the relevant source files when the diff is not enough to judge behavior. Verify that the diff file still hashes to the Diff SHA-256 before deciding.${
+    oversized
+      ? "\nThis diff is above the normal review-artifact size. Read it in slices with the read tool; do not skip any file."
+      : ""
+  }
 
 ## Review criteria
 

@@ -9,7 +9,11 @@ import {
   assessCommitCommand,
   computeBinding,
   formatReviewMessage,
+  hasNoVerify,
+  isDocsOnly,
+  isDocumentationPath,
   isGitCommit,
+  parseSkipReason,
   sha256,
   validateDossier,
 } from "./lib.mjs";
@@ -118,4 +122,28 @@ test("formatReviewMessage keeps advisories non-blocking", () => {
   assert.match(message, /Advisories \(non-blocking\)/);
   assert.match(message, /missing retry bound/);
   assert.match(message, /rename helper/);
+});
+
+test("skip path requires --no-verify and an explicit reason", () => {
+  assert.equal(hasNoVerify('git commit --no-verify -m "skip"'), true);
+  assert.equal(hasNoVerify('git commit -n -m "skip"'), true);
+  assert.equal(hasNoVerify('git commit -m "skip"'), false);
+  assert.equal(
+    parseSkipReason('COMMIT_REVIEW_SKIP_REASON="emergency rollback" git commit --no-verify -m x'),
+    "emergency rollback",
+  );
+  assert.equal(parseSkipReason('git commit --no-verify -m x'), "");
+});
+
+test("documentation paths are a narrow allowlist", () => {
+  assert.equal(isDocumentationPath("docs/architecture/README.md"), true);
+  assert.equal(isDocumentationPath("README.md"), true);
+  assert.equal(isDocumentationPath("CHANGELOG.md"), true);
+  assert.equal(isDocumentationPath("LICENSE"), true);
+  assert.equal(isDocumentationPath("src/main.go"), false);
+  assert.equal(isDocumentationPath("AGENTS.md"), false);
+  assert.equal(isDocumentationPath(".opencode/agents/commit-reviewer.md"), false);
+  assert.equal(isDocumentationPath("docs/../main.go"), false);
+  assert.equal(isDocsOnly(["docs/a.md", "README.md"]), true);
+  assert.equal(isDocsOnly(["docs/a.md", "main.go"]), false);
 });

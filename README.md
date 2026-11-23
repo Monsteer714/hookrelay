@@ -238,6 +238,9 @@ Agent-driven commits are gated by an independent reviewer. The OpenCode plugin d
 - `findings` block the commit.
 - `advisories` are non-blocking.
 - A missing, malformed, stale, or unbound dossier denies the commit.
+- Documentation-only commits are exempt and recorded.
+- `git commit --no-verify` requires `COMMIT_REVIEW_SKIP_REASON` and records a skip waiver.
+- A diff above 512 KiB needs a user-issued `/commit-review waive split <id> <reason>` prompt; it is never split automatically.
 
 See [docs/architecture/commit-review.md](docs/architecture/commit-review.md) for the design and limits.
 

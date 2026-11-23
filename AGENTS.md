@@ -120,9 +120,23 @@ Rules:
 - `advisories` are low or nit. They never block.
 - A PASS is valid only for the exact branch, HEAD, staged diff, and command that were reviewed.
 - A review is consumed by that commit. The next commit is reviewed again.
-- Do not bypass the gate, edit the reviewer verdict, or run `git commit --no-verify` to avoid it.
+- Do not bypass the gate, edit the reviewer verdict, or edit `.agents/state/` by hand.
 - If the gate fails, read the findings, fix the code, stage the changes, and retry. Do not re-run the same commit hoping for a different verdict.
-- `.agents/state/` is local runtime state. Never commit it and never edit it by hand.
+- `.agents/state/` is local runtime state. Never commit it.
+
+Allowed exemptions:
+
+- **Skip path:** use `git commit --no-verify` only when the user explicitly asks for an emergency skip. It must carry a reason:
+  ```sh
+  COMMIT_REVIEW_SKIP_REASON="why" git commit --no-verify -m "..."
+  ```
+  The gate records a `skip` waiver. Do not choose this path on your own.
+- **Documentation exemption:** a commit whose changed paths are all under `docs/` or are root `README*`, `CHANGELOG*`, `LICENSE*`, or `CONTRIBUTING.md` needs no review. `AGENTS.md`, `.opencode/**`, `scripts/**`, `deploy/**`, and `.github/**` are not documentation-exempt.
+- **Split waiver:** a diff above 512 KiB is not split automatically. Ask the user to send the exact prompt named in the denial:
+  ```text
+  /commit-review waive split <id> <one-line reason>
+  ```
+  The waiver skips only the size check; the reviewer still reviews the full diff. Do not generate this prompt on the user's behalf.
 
 The gate rejects commit forms it cannot bind to the staged diff:
 
@@ -173,7 +187,7 @@ Use Conventional Commits:
 ## Agent Tooling
 
 - `.opencode/agents/commit-reviewer.md` — read-only reviewer subagent. It may write only `.agents/state/commit-review/`.
-- `.opencode/plugins/commit-review/index.js` — OpenCode permission hook that detects `git commit`, checks or creates the review task, and allows or denies the commit.
+- `.opencode/plugins/commit-review/index.js` — OpenCode permission and prompt hooks. The permission hook detects `git commit`, applies skip/docs/split rules, and hands off the review task. The prompt hook records a user-issued split waiver.
 - `scripts/commit-review/lib.mjs` — binding, parsing, prompt, and dossier validation logic.
 - `scripts/commit-review/lib.test.mjs` — unit tests for the gate library.
 - `.opencode/plugins/commit-review/index.test.js` — adapter tests with a fake OpenCode context.
