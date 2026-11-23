@@ -1,0 +1,31 @@
+# Binaries
+/bin/
+/dist/
+hookrelay
+api
+worker
+
+# Test and coverage artifacts
+coverage.out
+coverage.html
+*.test
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local deployment state
+deploy/.env
+deploy/data/
+*.pem
+*.key
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
