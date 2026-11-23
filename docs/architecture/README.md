@@ -584,3 +584,10 @@ A single region keeps the first version operable by one engineer. Multi-region d
 4. **Hardening:** rate limiting, SSRF protection, graceful shutdown, integration tests.
 5. **Operations:** metrics, traces, Grafana, load test, capacity report.
 6. **Delivery pipeline:** Docker, GitHub Actions, deployment, rollback, failure drills.
+
+## 21. Commit review gate
+
+The independent commit review gate is documented separately in
+[commit-review.md](./commit-review.md). It covers the OpenCode permission hook,
+the fresh-context reviewer subagent, the bound dossier, the PASS/FAIL policy, and
+the limits of the local workflow check.

@@ -21,6 +21,9 @@ deploy/data/
 *.pem
 *.key
 
+# Agent runtime state
+.agents/state/
+
 # Editors and OS
 .DS_Store
 .idea/

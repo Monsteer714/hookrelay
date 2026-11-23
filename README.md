@@ -231,9 +231,20 @@ Key metrics:
 
 Logs are structured and carry `trace_id`, `tenant_id`, `event_id`, and `delivery_id`. Traces span ingestion, queue claim, HTTP delivery, and the response write-back.
 
+## Agent commit review
+
+Agent-driven commits are gated by an independent reviewer. The OpenCode plugin detects `git commit`, blocks the first attempt, and hands off a review task to a fresh-context `commit-reviewer` subagent. The review is bound to the exact branch, HEAD, staged diff, and command; the retry consumes a `PASS` once.
+
+- `findings` block the commit.
+- `advisories` are non-blocking.
+- A missing, malformed, stale, or unbound dossier denies the commit.
+
+See [docs/architecture/commit-review.md](docs/architecture/commit-review.md) for the design and limits.
+
 ## Roadmap
 
 - [x] Architecture and delivery plan
+- [x] OpenCode commit review gate
 - [ ] API skeleton, configuration, health checks
 - [ ] PostgreSQL schema and migrations
 - [ ] API key authentication and tenant isolation
@@ -252,6 +263,7 @@ Logs are structured and carry `trace_id`, `tenant_id`, `event_id`, and `delivery
 ## Documentation
 
 - [Architecture](docs/architecture/README.md)
+- [Commit review gate](docs/architecture/commit-review.md)
 
 ## License
 
